@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三级模块审核工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#f0f2f5;padding:40px 20px;}
+.container{max-width:1100px;margin:0 auto;}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:32px;margin-bottom:20px;}
+h1{font-size:24px;color:#1a1a1a;text-align:center;margin-bottom:24px;}
+.form-group{margin-bottom:18px;}
+label{display:block;font-weight:600;margin-bottom:6px;color:#333;}
+.file-input-wrap{display:flex;gap:8px;align-items:center;}
+.file-input-wrap input[type="file"]{flex:1;padding:8px;border:2px dashed #d0d5dd;border-radius:8px;background:#fafafa;cursor:pointer;}
+.file-input-wrap input[type="file"]:hover{border-color:#4096ff;}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
+.btn-primary{background:#1677ff;color:#fff;}
+.btn-primary:hover{background:#4096ff;}
+.btn-primary:disabled{background:#a0c4ff;cursor:not-allowed;}
+.btn-preview{background:#1677ff;color:#fff;}
+.btn-preview:hover{background:#4096ff;}
+.btn-download{background:#52c41a;color:#fff;}
+.btn-download:hover{background:#73d13d;}
+.btn-upload{background:#fa8c16;color:#fff;white-space:nowrap;}
+.btn-upload:hover{background:#ffa940;}
+.btn-full{display:block;width:100%;padding:12px;font-size:16px;margin-top:20px;}
+.btn-sm{padding:4px 12px;font-size:12px;}
+.file-status{display:none;margin-top:8px;padding:8px 12px;background:#f6ffed;border:1px solid #b7eb8f;border-radius:6px;font-size:14px;align-items:center;gap:12px;flex-wrap:wrap;}
+.file-status.show{display:flex;}
+.file-status.error{background:#fff2f0;border-color:#ffccc7;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;}
+.badge.red{background:#f5222d;color:#fff;}
+.badge.orange{background:#fa8c16;color:#fff;}
+.badge.green{background:#52c41a;color:#fff;}
+.result-section{margin-bottom:20px;}
+.result-section h2{font-size:18px;color:#1a1a1a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e8e8e8;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.stat-item{background:#f7f8fa;border-radius:8px;padding:16px;text-align:center;}
+.stat-item .num{font-size:28px;font-weight:700;color:#1677ff;}
+.stat-item .num.green{color:#52c41a;}
+.stat-item .num.orange{color:#fa8c16;}
+.stat-item .num.red{color:#f5222d;}
+.stat-item .label{font-size:13px;color:#666;margin-top:4px;}
+.pct-circle{width:120px;height:120px;border-radius:50%;background:conic-gradient(#52c41a var(--pct),#f0f2f5 0);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.pct-circle-inner{width:90px;height:90px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#1a1a1a;}
+.diff-list{max-height:300px;overflow-y:auto;border:1px solid #e8e8e8;border-radius:8px;}
+.diff-row{padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:14px;}
+.diff-row:last-child{border-bottom:none;}
+.diff-row.missing{background:#fff2f0;color:#cf1322;}
+.diff-row.extra{background:#fffbe6;color:#8a6d00;}
+.footer{text-align:center;color:#999;font-size:13px;margin-top:20px;}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<h1>三级模块审核工具</h1>
+<div class="form-group">
+<label>Word 需求说明书 (.docx)</label>
+<div class="file-input-wrap">
+<input type="file" id="wordFile" accept=".doc,.docx">
+<button class="btn btn-upload" onclick="uploadFile('word')">上传</button>
+</div>
+<div class="file-status" id="wordStatus"></div>
+</div>
+<div class="form-group">
+<label>Excel 功能点拆分表 (.xlsx)</label>
+<div class="file-input-wrap">
+<input type="file" id="excelFile" accept=".xls,.xlsx,.xlsm">
+<button class="btn btn-upload" onclick="uploadFile('excel')">上传</button>
+</div>
+<div class="file-status" id="excelStatus"></div>
+</div>
+<button class="btn btn-primary btn-full" id="auditBtn" onclick="startAudit()" disabled>开始审核</button>
+</div>
+
+<div th:if="${result}" class="card">
+<div class="result-section">
+<h2>审核结果</h2>
+<div class="pct-circle" th:style="'--pct: ' + ${result.pct} + '%'">
+<div class="pct-circle-inner" th:text="${result.pct} + '%'">100%</div>
+</div>
+<div class="stat-grid">
+<div class="stat-item"><div class="num" th:text="${result.total_word}">0</div><div class="label">Word 三级模块数</div></div>
+<div class="stat-item"><div class="num" th:text="${result.total_excel}">0</div><div class="label">Excel 三级模块数</div></div>
+<div class="stat-item"><div class="num green" th:text="${result.match_count}">0</div><div class="label">匹配数量</div></div>
+<div class="stat-item"><div class="num green" th:text="${result.green}">0</div><div class="label">标绿行数</div></div>
+<div class="stat-item"><div class="num orange" th:text="${result.yellow}">0</div><div class="label">标黄行数</div></div>
+</div>
+<div class="legend" style="display:flex;gap:20px;justify-content:center;font-size:13px;color:#555;margin-top:4px;">
+<span><span style="display:inline-block;width:16px;height:16px;background:#92D050;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> 绿色：Word 与 Excel 均存在的模块（匹配成功）</span>
+<span><span style="display:inline-block;width:16px;height:16px;background:#FFFF00;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> 黄色：Excel 中有但 Word 中没有的模块（额外）</span>
+</div>
+</div>
+
+<div th:if="${result.missing_word != null and !result.missing_word.isEmpty()}" class="result-section">
+<h2>Word 中有、Excel 中缺失 <span class="badge red" th:text="${result.missing_word.size()}">0</span></h2>
+<div class="diff-list">
+<div th:each="m : ${result.missing_word}" class="diff-row missing" th:text="${m}"></div>
+</div>
+</div>
+
+<div th:if="${result.extra_excel != null and !result.extra_excel.isEmpty()}" class="result-section">
+<h2>Excel 中有、Word 中缺失 <span class="badge orange" th:text="${result.extra_excel.size()}">0</span></h2>
+<div class="diff-list">
+<div th:each="e : ${result.extra_excel}" class="diff-row extra">
+[<span th:text="${e.level1}"></span>] &gt; [<span th:text="${e.level2}"></span>] &gt; <span th:text="${e.level3}"></span>
+<span style="color:#bbb;font-size:12px;">(<span th:text="${e.sheet}"></span>)</span>
+</div>
+</div>
+</div>
+
+<div th:if="${result}" class="result-section" style="margin-bottom:0;">
+<h2>审核结果文件</h2>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">
+<a class="btn btn-preview" th:data-name="${result.out_name}" data-ext="xlsx" onclick="openInOffice(this); return false;" href="#" style="background:#1677ff;">预览(本机)</a>
+<a class="btn btn-preview" th:href="@{'/preview-office/' + ${result.out_name}}" target="_blank" style="background:#8B5CF6;">高质量预览</a>
+<a class="btn btn-download" th:href="@{'/download/' + ${result.out_name} + '?display_name=' + ${result.display_name}}">下载</a>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">三级模块审核工具</div>
+<script>
+var uploaded = {word: false, excel: false};
+function uploadFile(type) {
+  var input = document.getElementById(type === 'word' ? 'wordFile' : 'excelFile');
+  var file = input.files[0];
+  if (!file) { alert('请先选择文件'); return; }
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', type);
+  var status = document.getElementById(type + 'Status');
+  status.className = 'file-status show';
+  status.innerHTML = '<span>正在上传...</span>';
+  fetch('/upload', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        uploaded[type] = true;
+        document.getElementById('auditBtn').disabled = !(uploaded.word && uploaded.excel);
+        status.className = 'file-status show';
+        status.innerHTML = '<span style="color:#52c41a;font-weight:600;">' + data.name + '</span> '
+           + '<a href="#" data-name="' + data.filename + '" data-ext="' + (data.filename.match(/\.docx?$/i) ? 'docx' : 'xlsx') + '" onclick="openInOffice(this); return false;" class="btn btn-preview btn-sm" style="background:#1677ff;">预览(本机)</a> '
+          + '<a href="/preview-office/' + data.filename + '" class="btn btn-preview btn-sm" target="_blank" style="background:#8B5CF6;">高质量预览</a> '
+          + '<a href="/download/' + data.filename + '" class="btn btn-download btn-sm">下载</a>';
+      } else {
+        status.className = 'file-status show error';
+        status.innerHTML = '<span style="color:#f5222d;">' + data.msg + '</span>';
+      }
+    })
+    .catch(function(){
+      status.className = 'file-status show error';
+      status.innerHTML = '<span style="color:#f5222d;">上传失败</span>';
+    });
+}
+function openInOffice(el) {
+  var name = el.getAttribute('data-name');
+  var ext = el.getAttribute('data-ext');
+  var proto = ext === 'docx' ? 'ms-word' : 'ms-excel';
+  var url = proto + ':ofe|u|' + window.location.origin + '/open/' + encodeURIComponent(name);
+  window.location.href = url;
+}
+function startAudit() {
+  if (!uploaded.word || !uploaded.excel) { alert('请先上传Word和Excel文件'); return; }
+  document.getElementById('auditBtn').style.display = 'none';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/';
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
+</body>
+</html>
